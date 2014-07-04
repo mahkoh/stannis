@@ -1,0 +1,19 @@
+[package]
+name = "bestclient"
+version = "0.0.1"
+authors = [ "mahkoh" ]
+
+[dependencies.tox]
+git = "https://github.com/mahkoh/rust-tox.git"
+
+[dependencies.ncurses]
+git = "https://github.com/mahkoh/cargocurses.git"
+
+[dependencies.signals]
+git = "https://github.com/mahkoh/signals.rs.git"
+
+[dependencies.fdpoll]
+git = "https://github.com/mahkoh/fdpoll.rs.git"
+
+[[bin]]
+name = "bestclient"
