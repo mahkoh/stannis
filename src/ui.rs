@@ -123,6 +123,7 @@ impl<'a> Ui<'a> {
     fn update(&mut self) {
         self.update_statusline();
         self.contacts.update();
+        normal!(COLOR_PAIR_DEFAULT);
     }
 
     fn update_statusline(&mut self) {

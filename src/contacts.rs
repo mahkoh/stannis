@@ -45,7 +45,6 @@ pub struct View<'a> {
     mode: Mode,
     prompt: Prompt,
     needs_resize: bool,
-    needs_update: bool,
 }
 
 #[deriving(Eq, PartialEq)]
@@ -67,7 +66,6 @@ impl<'a> View<'a> {
     }
 
     pub fn resize(&mut self) {
-        self.needs_update = true;
         self.needs_resize = true;
     }
 
@@ -84,7 +82,6 @@ impl<'a> View<'a> {
             mode: NormalMode,
             prompt: prompt,
             needs_resize: true,
-            needs_update: true,
         }
     }
 
@@ -154,24 +151,30 @@ impl<'a> View<'a> {
 
     fn do_resize(&mut self) {
         self.prompt.resize();
+        if nc::LINES <= 2 {
+            self.top = self.absolute(self.selected);
+        } else if self.absolute(self.selected) - self.top + 3 > nc::LINES as uint {
+            self.top = self.absolute(self.selected) - nc::LINES as uint + 3;
+        }
     }
 
     pub fn update(&mut self) {
-        /*
-        if !self.needs_update {
-            return;
-        }
-        */
         if self.needs_resize {
             self.do_resize();
             self.needs_resize = false;
         }
-        self.needs_update = false;
+        let mut num = 0;
         for (i, row) in self.iter().skip(self.top).take(nc::LINES as uint - 2).enumerate() {
             match row {
                 Header(s) => self.print_header(i as i32, s),
                 _ => self.print_entry(i as i32, row),
             }
+            num += 1;
+        }
+        normal!(COLOR_PAIR_DEFAULT);
+        for i in range(num, nc::LINES as uint - 2) {
+            nc::move(i as i32, 0);
+            nc::clrtoeol();
         }
         self.prompt.draw(nc::LINES - 2);
         nc::refresh();
@@ -230,26 +233,6 @@ impl<'a> View<'a> {
             _ => self.prompt.key(key),
         }
     }
-
-    /*
-    fn prompt_del_word(&mut self) {
-        let start;
-        match self.prompt_text.as_slice().bytes().rev().position(|c| c != ' ' as u8) {
-            Some(p) => start = self.prompt_text.len() - p,
-            _ => {
-                self.prompt_text.clear();
-                return;
-            }
-        }
-        match self.prompt_text.as_slice().slice_to(start).bytes().rev().position(|c| c == ' ' as u8) {
-            Some(p) => {
-                let end = start - p;
-                self.prompt_text.truncate(end);
-            }
-            None => self.prompt_text.clear(),
-        }
-    }
-    */
 
     pub fn handle_normal_mode_key(&mut self, key: i32) {
         if key < 128 {
