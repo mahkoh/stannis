@@ -44,6 +44,8 @@ pub struct View<'a> {
     selected: Row<'a>,
     mode: Mode,
     prompt: Prompt,
+    needs_resize: bool,
+    needs_update: bool,
 }
 
 #[deriving(Eq, PartialEq)]
@@ -64,6 +66,11 @@ impl<'a> View<'a> {
         }
     }
 
+    pub fn resize(&mut self) {
+        self.needs_update = true;
+        self.needs_resize = true;
+    }
+
     pub fn new() -> View {
         let mut prompt = Prompt::new();
         prompt.set_prefix("[n] ");
@@ -76,6 +83,8 @@ impl<'a> View<'a> {
             selected: RequestRow(0),
             mode: NormalMode,
             prompt: prompt,
+            needs_resize: true,
+            needs_update: true,
         }
     }
 
@@ -143,7 +152,21 @@ impl<'a> View<'a> {
         }
     }
 
-    pub fn update(&self) {
+    fn do_resize(&mut self) {
+        self.prompt.resize();
+    }
+
+    pub fn update(&mut self) {
+        /*
+        if !self.needs_update {
+            return;
+        }
+        */
+        if self.needs_resize {
+            self.do_resize();
+            self.needs_resize = false;
+        }
+        self.needs_update = false;
         for (i, row) in self.iter().skip(self.top).take(nc::LINES as uint - 2).enumerate() {
             match row {
                 Header(s) => self.print_header(i as i32, s),

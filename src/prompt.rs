@@ -383,6 +383,50 @@ impl Prompt {
             self.low_key(key as u8);
         }
     }
+
+    pub fn resize(&mut self) {
+        if nc::COLS as uint <= self.prefix_width + 1 {
+            self.left = self.cursor;
+            self.right = self.cursor;
+            self.visible_width = 0;
+            self.cursor_term = self.prefix_width;
+            return;
+        }
+        let mut cursor_end = if self.cursor == self.text.len() {
+            self.cursor_term + 1
+        } else {
+            let c = self.text.as_slice().char_at(self.cursor);
+            self.cursor_term + c.width2()
+        };
+        if cursor_end > nc::COLS as uint {
+            let slice = self.text.as_slice();
+            let new_right = if self.cursor == self.text.len() {
+                self.cursor
+            } else {
+                self.cursor + slice.char_at(self.cursor).len_utf8_bytes()
+            };
+            self.visible_width -= slice.slice(new_right, self.right).width();
+            self.right = new_right;
+            while cursor_end > nc::COLS as uint {
+                let c = slice.char_at(self.left);
+                let width = c.width2();
+                self.left += c.len_utf8_bytes();
+                self.visible_width -= width;
+                self.cursor_term -= width;
+                cursor_end -= width;
+            }
+            if self.cursor < self.left {
+                self.left = self.cursor;
+                self.right = self.cursor;
+                self.visible_width = 0;
+                self.cursor_term = self.prefix_width;
+            }
+        } else if self.prefix_width + self.visible_width > nc::COLS as uint {
+            self.trim_right();
+        } else {
+            self.extend_right();
+        }
+    }
 }
 
 trait Movement<T, U> {

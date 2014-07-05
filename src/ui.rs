@@ -146,6 +146,7 @@ impl<'a> Ui<'a> {
         }
         let (columns, lines) = term::dimensions();
         unsafe { resizeterm(lines as c_int, columns as c_int); }
+        self.contacts.resize();
     }
 }
 
