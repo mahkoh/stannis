@@ -1,27 +1,29 @@
 use tox::core::{Address};
 use std;
+use std::num::{FromPrimitive};
 
+#[repr(uint)]
+#[deriving(FromPrimitive)]
 pub enum _Command {
     _Quit,
     _Add,
+    _Del,
 }
 
 impl _Command {
     fn first() -> _Command {
-        _Quit
+        FromPrimitive::from_uint(0).unwrap()
     }
 
     fn next(self) -> Option<_Command> {
-        match self {
-            _Quit => Some(_Add),
-            _Add => None,
-        }
+        FromPrimitive::from_uint(self as uint + 1)
     }
 
     fn text(self) -> &'static str {
         match self {
             _Quit => "q",
             _Add => "add",
+            _Del => "del",
         }
     }
 
@@ -29,6 +31,7 @@ impl _Command {
         match self {
             _Quit => Ok(Quit),
             _Add => self.parse_add(iter),
+            _Del => self.parse_del(iter),
         }
     }
 
@@ -42,10 +45,28 @@ impl _Command {
         };
         let msg = match iter.next() {
             Some(s) if s.len() > 0 => s.to_string(),
-            Some(s) => return Err("message musn't be empty"),
+            Some(_) => return Err("message musn't be empty"),
             _ => return Err("missing message"),
         };
+        if iter.next().is_some() {
+            return Err("too many arguments");
+        }
         Ok(Add(address, msg))
+    }
+
+    fn parse_del(self, mut iter: TokenIter) -> Result {
+        let s = match iter.next() {
+            Some(s) => s,
+            None => return Err("missing id"),
+        };
+        let id = match from_str(s) {
+            Some(i) => i,
+            None => return Err("invalid id"),
+        };
+        if iter.next().is_some() {
+            return Err("too many arguments");
+        }
+        Ok(Del(id))
     }
 }
 
@@ -54,6 +75,7 @@ pub type Result = std::result::Result<Command, &'static str>;
 pub enum Command {
     Quit,
     Add(Address, String),
+    Del(i32),
 }
 
 pub fn parse(s: &str) -> Result {

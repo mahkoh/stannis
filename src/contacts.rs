@@ -1,10 +1,9 @@
 use tox::core::{ClientId};
 use nc = ncurses;
 use colors::*;
-use term::cwidth::{CharWidth, StringWidth};
 use prompt::{Prompt};
 use commands;
-use commands::{Command};
+use commands::{Del};
 
 struct FriendRequest {
     id: ClientId,
@@ -52,6 +51,7 @@ pub struct View<'a> {
 
 #[deriving(Eq, PartialEq)]
 enum Row<'a> {
+    NoRow,
     Header(&'a str),
     RequestRow(uint),
     GroupRow(uint),
@@ -100,7 +100,7 @@ impl<'a> View<'a> {
             friends: Vec::new(),
             groups: 0,
             top: 0,
-            selected: RequestRow(0),
+            selected: NoRow,
             mode: NormalMode,
             prompt: prompt,
             needs_resize: true,
@@ -272,9 +272,82 @@ impl<'a> View<'a> {
         } else if key == 27 {
             self.set_mode(NormalMode);
             None
-        }else {
+        } else {
             self.prompt.key(key);
             None
+        }
+    }
+
+    /// Returns a row close to `row` but never `row`.
+    fn close(&self, row: Row) -> Row {
+        match row {
+            RequestRow(i) => {
+                if i + 1 < self.requests.len() {
+                    RequestRow(i + 1)
+                } else if i > 0 {
+                    RequestRow(i - 1)
+                } else if self.groups > 0 {
+                    GroupRow(0)
+                } else if self.friends.len() > 0 {
+                    FriendRow(0)
+                } else {
+                    NoRow
+                }
+            },
+            GroupRow(i) => {
+                if i + 1 < self.groups {
+                    GroupRow(i + 1)
+                } else if i > 0 {
+                    GroupRow(i - 1)
+                } else if self.friends.len() > 0 {
+                    FriendRow(0)
+                } else if self.requests.len() > 0 {
+                    RequestRow(self.requests.len() - 1)
+                } else {
+                    NoRow
+                }
+            },
+            FriendRow(i) => {
+                if i + 1 < self.friends.len() {
+                    FriendRow(i + 1)
+                } else if i > 0 {
+                    FriendRow(i - 1)
+                } else if self.groups > 0 {
+                    GroupRow(self.groups - 1)
+                } else if self.requests.len() > 0 {
+                    RequestRow(self.requests.len() - 1)
+                } else {
+                    NoRow
+                }
+            },
+            _ => NoRow,
+        }
+    }
+
+    pub fn del(&mut self, id: i32) -> Result<(), &'static str> {
+        let pos = match self.friends.iter().position(|f| f.id == id) {
+            Some(i) => i,
+            None => return Err("unknown id"),
+        };
+        match self.selected {
+            FriendRow(i) if i > pos => self.selected = FriendRow(i-1),
+            FriendRow(i) if i == pos => {
+                self.selected = self.close(self.selected);
+                if self.absolute(self.selected) < self.top {
+                    self.top = self.absolute(self.selected);
+                }
+                return self.del(id);
+            },
+            _ => { },
+        }
+        self.friends.remove(pos);
+        Ok(())
+    }
+
+    fn del_selected(&mut self) -> Option<commands::Result> {
+        match self.selected {
+            FriendRow(i) => Some(Ok(Del(self.friends.get(i).id))),
+            _ => None,
         }
     }
 
@@ -285,6 +358,11 @@ impl<'a> View<'a> {
                 'k' => self.up(),
                 // 'a' => self.mode = InsertMode,
                 ':' => self.set_mode(CommandMode),
+                _ => { },
+            }
+        } else {
+            match key {
+                nc::KEY_BACKSPACE => return self.del_selected(),
                 _ => { },
             }
         }

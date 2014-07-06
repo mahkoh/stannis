@@ -1,15 +1,12 @@
 use nc = ncurses;
-use signals;
 use signals::{Signals, Pipe, Hangup, Terminate, WinSize};
-use tox;
 use tox::core::{Tox, Address, FaerrToolong, FaerrOwnkey, FaerrAlreadysent,
                 FaerrBadchecksum, Event, NameChange};
-use std;
 use fdpoll::{FDPoll, Read};
 use term;
 use colors::*;
 use contacts;
-use commands::{Command, Quit, Add};
+use commands::{Quit, Add, Del};
 use commands;
 
 use std::rc::{Rc};
@@ -156,7 +153,7 @@ impl<'a> Ui<'a> {
             }
         }
 
-        fdpoll.abort();
+        fdpoll.abort().ok();
         nc::endwin();
     }
 
@@ -196,6 +193,7 @@ impl<'a> Ui<'a> {
     }
 
     fn handle_key(&mut self) {
+        self.status = NoMsg;
         match self.contacts.handle_key(nc::getch()) {
             Some(c) => self.handle_command(c),
             _ => { },
@@ -214,6 +212,7 @@ impl<'a> Ui<'a> {
         match c {
             Quit => self.shutdown = true,
             Add(addr, msg) => self.tox_add(addr, msg),
+            Del(id) => self.tox_del(id),
         }
     }
 
@@ -231,6 +230,15 @@ impl<'a> Ui<'a> {
             }
         }
         self.needs_update = true;
+    }
+
+    fn tox_del(&mut self, id: i32) {
+        match self.contacts.del(id) {
+            Err(s) => self.status = Error(s),
+            _ => {
+                self.tox.del_friend(id).ok();
+            },
+        }
     }
 
     fn resize(&mut self) {
