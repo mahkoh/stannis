@@ -1,7 +1,7 @@
-SRC = src/bestclient.rs
-DEPS_FILE = target/.bestclient.deps
+SRC = src/stannis.rs
+DEPS_FILE = target/.stannis.deps
 DEPS = $(shell head -n1 $(DEPS_FILE) 2> /dev/null)
-BIN = target/bestclient
+BIN = target/stannis
 CFG_OPT ?= -L target/deps -g # -O
 
 all: $(BIN)

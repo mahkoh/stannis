@@ -1,4 +1,4 @@
-#![crate_id = "bestclient"]
+#![crate_id = "stannis"]
 #![feature(globs, macro_rules)]
 
 extern crate ncurses;

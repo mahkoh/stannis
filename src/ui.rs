@@ -168,7 +168,7 @@ impl<'a> Ui<'a> {
     }
 
     fn tox_name_change(&mut self, id: i32, name: String) {
-        self.contacts.tox_name_chang(id, name);
+        self.contacts.tox_name_change(id, name);
         self.needs_update = true;
     }
 

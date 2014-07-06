@@ -1,7 +1,7 @@
 [package]
-name = "bestclient"
+name = "stannis"
 version = "0.0.1"
-authors = [ "mahkoh" ]
+authors = [ "" ]
 
 [dependencies.tox]
 git = "https://github.com/mahkoh/rust-tox.git"
@@ -16,4 +16,4 @@ git = "https://github.com/mahkoh/signals.rs.git"
 git = "https://github.com/mahkoh/fdpoll.rs.git"
 
 [[bin]]
-name = "bestclient"
+name = "stannis"

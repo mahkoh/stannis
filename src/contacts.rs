@@ -71,7 +71,7 @@ impl<'a> View<'a> {
         }
     }
 
-    pub fn tox_name_chang(&mut self, id: i32, name: String) {
+    pub fn tox_name_change(&mut self, id: i32, name: String) {
         let pos = match self.friends.iter().position(|f| f.id == id) {
             Some(i) => i,
             None => return,
