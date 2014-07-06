@@ -14,6 +14,7 @@ mod term;
 mod contacts;
 mod utfbuf;
 mod prompt;
+mod commands;
 
 fn main() {
     ui::run();

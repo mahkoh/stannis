@@ -3,6 +3,8 @@ use nc = ncurses;
 use colors::*;
 use term::cwidth::{CharWidth, StringWidth};
 use prompt::{Prompt};
+use commands;
+use commands::{Command};
 
 struct FriendRequest {
     id: ClientId,
@@ -10,12 +12,13 @@ struct FriendRequest {
 }
 
 struct Friend {
-    id: u32,
+    id: i32,
     name: String,
+    status: String,
 }
 
 struct Group {
-    id: u32,
+    id: i32,
 }
 
 enum Mode {
@@ -37,8 +40,8 @@ impl Mode {
 }
 
 pub struct View<'a> {
-    requests: Vec<String>,
-    friends: Vec<(String, String)>,
+    requests: Vec<FriendRequest>,
+    friends: Vec<Friend>,
     groups: uint,
     top: uint,
     selected: Row<'a>,
@@ -56,6 +59,26 @@ enum Row<'a> {
 }
 
 impl<'a> View<'a> {
+    pub fn tox_add(&mut self, id: i32) {
+        let friend = Friend {
+            id: id,
+            name: "anonymous".to_string(),
+            status: "".to_string(),
+        };
+        self.friends.push(friend);
+        if self.friends.len() + self.requests.len() + self.groups == 1 {
+            self.selected = FriendRow(0);
+        }
+    }
+
+    pub fn tox_name_chang(&mut self, id: i32, name: String) {
+        let pos = match self.friends.iter().position(|f| f.id == id) {
+            Some(i) => i,
+            None => return,
+        };
+        self.friends.get_mut(pos).name = name;
+    }
+
     fn absolute(&self, row: Row) -> uint {
         match (row, self.requests.len(), self.groups) {
             (RequestRow(i), _, _) => 1+i,
@@ -73,10 +96,9 @@ impl<'a> View<'a> {
         let mut prompt = Prompt::new();
         prompt.set_prefix("[n] ");
         View {
-            requests: vec!("number1".to_string(), "number2".to_string()),
-            friends: vec!(("mahkoh".to_string(), "shitposting".to_string()),
-                          ("astonex".to_string(), "ayy lmao".to_string())),
-            groups: 30,
+            requests: Vec::new(),
+            friends: Vec::new(),
+            groups: 0,
             top: 0,
             selected: RequestRow(0),
             mode: NormalMode,
@@ -202,14 +224,14 @@ impl<'a> View<'a> {
         nc::mvaddch(y, 0, ' ' as u32);
         match row {
             RequestRow(i) => {
-                nc::addstr(self.requests.get(i as uint).as_slice());
+                nc::addstr(self.requests.get(i as uint).message.as_slice());
             },
             GroupRow(i) => {
                 nc::addstr(format!("Groupchat {}", i).as_slice());
             },
             FriendRow(i) => {
-                let &(ref friend, ref status) = self.friends.get(i);
-                nc::addstr(format!("{}   {}", friend, status).as_slice());
+                let friend = self.friends.get(i);
+                nc::addstr(format!("{}   {}", friend.name, friend.status).as_slice());
             }
             _ => { },
         }
@@ -227,23 +249,46 @@ impl<'a> View<'a> {
         }
     }
 
-    pub fn handle_key(&mut self, key: i32) {
+    pub fn handle_key(&mut self, key: i32) -> Option<commands::Result> {
         match self.mode {
             NormalMode => self.handle_normal_mode_key(key),
-            _ => self.prompt.key(key),
+            CommandMode => self.handle_command_mode_key(key),
+            _ => None,
         }
     }
 
-    pub fn handle_normal_mode_key(&mut self, key: i32) {
+    fn set_mode(&mut self, mode: Mode) {
+        self.mode = mode;
+        self.prompt.set_prefix(mode.fmt());
+    }
+
+    pub fn handle_command_mode_key(&mut self,
+                                   key: i32) -> Option<commands::Result> {
+        if key == '\r' as i32 {
+            let command = commands::parse(self.prompt.text());
+            self.prompt.clear();
+            self.set_mode(NormalMode);
+            Some(command)
+        } else if key == 27 {
+            self.set_mode(NormalMode);
+            None
+        }else {
+            self.prompt.key(key);
+            None
+        }
+    }
+
+    pub fn handle_normal_mode_key(&mut self, key: i32) -> Option<commands::Result> {
         if key < 128 {
             match key as u8 as char {
                 'j' => self.down(),
                 'k' => self.up(),
-                'a' => self.mode = InsertMode,
-                ':' => self.mode = CommandMode,
+                // 'a' => self.mode = InsertMode,
+                ':' => self.set_mode(CommandMode),
                 _ => { },
             }
         }
+        None
     }
 }
 
